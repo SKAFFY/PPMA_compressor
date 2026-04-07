@@ -1,8 +1,6 @@
 package arithmetic_encoder_decoder
 
 import (
-	"errors"
-	"fmt"
 	"io"
 )
 
@@ -36,7 +34,7 @@ func (d *ArithmeticDecoder) readBit() (uint64, error) {
 		var b [1]byte
 		_, err := d.in.Read(b[:])
 		if err != nil {
-			return 0, fmt.Errorf("reading bit: %w", err)
+			return 0, err
 		}
 		d.buf = b[0]
 		d.bits = 8
@@ -59,8 +57,10 @@ func (d *ArithmeticDecoder) Decode(cumFreq []uint64, totalFreq uint64) (byte, er
 			sym := byte(mid)
 			d.high = d.low + (rng*cumFreq[sym+1])/totalFreq - 1
 			d.low = d.low + (rng*cumFreq[sym])/totalFreq
+
 			for {
 				if d.high < Half {
+					// бит не меняется
 				} else if d.low >= Half {
 					d.value -= Half
 					d.low -= Half
@@ -76,9 +76,6 @@ func (d *ArithmeticDecoder) Decode(cumFreq []uint64, totalFreq uint64) (byte, er
 				d.high = (d.high << 1) | 1
 				bit, err := d.readBit()
 				if err != nil {
-					if errors.Is(err, io.EOF) {
-						break
-					}
 					d.err = err
 					return 0, err
 				}
