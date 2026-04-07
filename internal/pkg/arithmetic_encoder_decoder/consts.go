@@ -1,8 +1,9 @@
 package arithmetic_encoder_decoder
 
-// Используем классические константы для 32-битного арифметического кодирования.
-// TopValue = 1 << 32 (не помещается в uint32, поэтому в коде он не используется как значение).
 const (
-	Half    uint32 = 0x80000000 // 1 << 31
-	Quarter uint32 = 0x40000000 // 1 << 30
+	CodeValueBits = 32
+	TopValue      = uint64(1) << CodeValueBits
+	FirstQtr      = TopValue / 4
+	Half          = TopValue / 2
+	ThirdQtr      = 3 * TopValue / 4
 )
