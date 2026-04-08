@@ -1,8 +1,8 @@
 package main
 
 import (
-	"PPMA_compressor/internal/pkg/arithmetic_encoder_decoder"
-	"PPMA_compressor/internal/pkg/compressor_decompressor"
+	"PPMC_compressor/internal/pkg/arithmetic_encoder_decoder"
+	"PPMC_compressor/internal/pkg/compressor_decompressor"
 	"bytes"
 	"flag"
 	"fmt"

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"PPMA_compressor/internal/pkg/compressor_decompressor"
+	"PPMC_compressor/internal/pkg/compressor_decompressor"
 	"bufio"
 	"flag"
 	"fmt"

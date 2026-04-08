@@ -1,4 +1,4 @@
-module PPMA_compressor
+module PPMC_compressor
 
 go 1.26.1
 

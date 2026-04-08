@@ -5,7 +5,7 @@ import (
 	"io"
 	"testing"
 
-	"PPMA_compressor/internal/pkg/arithmetic_encoder_decoder"
+	"PPMC_compressor/internal/pkg/arithmetic_encoder_decoder"
 )
 
 func TestCompressDecompressRoundTrip(t *testing.T) {

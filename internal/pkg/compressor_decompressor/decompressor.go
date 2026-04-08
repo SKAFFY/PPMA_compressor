@@ -1,9 +1,9 @@
 package compressor_decompressor
 
 import (
-	"PPMA_compressor/internal/pkg/arithmetic_encoder_decoder"
-	"PPMA_compressor/internal/pkg/context_tree"
-	"PPMA_compressor/internal/pkg/sliding_window"
+	"PPMC_compressor/internal/pkg/arithmetic_encoder_decoder"
+	"PPMC_compressor/internal/pkg/context_tree"
+	"PPMC_compressor/internal/pkg/sliding_window"
 	"encoding/binary"
 	"fmt"
 	"io"

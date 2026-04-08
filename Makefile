@@ -7,8 +7,8 @@ GOGET=$(GOCMD) get
 GORUN=$(GOCMD) run
 
 # Binary names
-COMPRESSOR_BINARY=ppma_compress
-DECOMPRESSOR_BINARY=ppma_decompress
+COMPRESSOR_BINARY=ppmc_compress
+DECOMPRESSOR_BINARY=ppmc_decompress
 CALGARY_BINARY=calgary_analysis
 
 # Paths to main packages
@@ -72,6 +72,13 @@ $(BIN_DIR)/$(DECOMPRESSOR_BINARY): $(DECOMPRESSOR_MAIN)
 $(BIN_DIR)/$(CALGARY_BINARY): $(CALGARY_MAIN)
 	$(GOBUILD) -o $(BIN_DIR)/$(CALGARY_BINARY) $(CALGARY_MAIN)
 
+# Кросс-компиляция для Windows 10 (64-bit)
+build-windows:
+	mkdir -p $(BIN_DIR)/windows
+	GOOS=windows GOARCH=amd64 $(GOBUILD) -o $(BIN_DIR)/windows/$(COMPRESSOR_BINARY).exe $(COMPRESSOR_MAIN)
+	GOOS=windows GOARCH=amd64 $(GOBUILD) -o $(BIN_DIR)/windows/$(DECOMPRESSOR_BINARY).exe $(DECOMPRESSOR_MAIN)
+	GOOS=windows GOARCH=amd64 $(GOBUILD) -o $(BIN_DIR)/windows/$(CALGARY_BINARY).exe $(CALGARY_MAIN)
+
 clean:
 	rm -rf $(BIN_DIR) $(REPORTS_DIR)
 
@@ -92,11 +99,11 @@ calgary: ensure-dataset $(BIN_DIR)/$(CALGARY_BINARY)
 calgary-save: ensure-dataset $(REPORTS_DIR) $(BIN_DIR)/$(CALGARY_BINARY)
 	$(BIN_DIR)/$(CALGARY_BINARY) -dir=$(DIR) -output=$(REPORTS_DIR)/calgary_$(shell date +%Y%m%d_%H%M%S).txt
 
-# Запуск без сборки (удобно для разработки) – тоже с автоматической загрузкой
+# Запуск без сборки (удобно для разработки)
 run-calgary: ensure-dataset
 	$(GORUN) $(CALGARY_MAIN) -dir=$(DIR)
 
 run-calgary-save: ensure-dataset $(REPORTS_DIR)
 	$(GORUN) $(CALGARY_MAIN) -dir=$(DIR) -output=$(REPORTS_DIR)/calgary_$(shell date +%Y%m%d_%H%M%S).txt
 
-.PHONY: all build clean clean-dataset test test-e2e calgary calgary-save run-calgary run-calgary-save download-dataset ensure-dataset
+.PHONY: all build clean clean-dataset test test-e2e calgary calgary-save run-calgary run-calgary-save download-dataset ensure-dataset build-windows
