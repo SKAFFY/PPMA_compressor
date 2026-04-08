@@ -89,16 +89,44 @@ func TestSlidingWindow(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := NewSlidingWindow(tt.maxOrder)
-
 			for _, b := range tt.pushes {
 				w.Push(b)
 			}
 
+			// Один буфер на все вызовы (ёмкость = maxOrder)
+			buf := make([]byte, tt.maxOrder)
 			for _, req := range tt.getContexts {
-				got := w.GetContext(req.order)
+				got := w.GetContext(req.order, buf[:0])
 				assert.Equal(t, req.want, got,
 					"GetContext(%d) mismatch", req.order)
 			}
 		})
 	}
+}
+
+// Бенчмарк для сравнения производительности нового и старого API
+func BenchmarkGetContext(b *testing.B) {
+	const maxOrder = 8
+	const order = 4
+
+	w := NewSlidingWindow(maxOrder)
+	// заполняем окно данными
+	for i := 0; i < maxOrder+2; i++ {
+		w.Push(byte(i))
+	}
+
+	b.Run("NewAPI_WithBuffer", func(b *testing.B) {
+		buf := make([]byte, maxOrder)
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = w.GetContext(order, buf[:0])
+		}
+	})
+
+	b.Run("OldAPI_Legacy", func(b *testing.B) {
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = w.GetContextLegacy(order)
+		}
+	})
 }

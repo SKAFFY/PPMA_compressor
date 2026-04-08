@@ -18,6 +18,7 @@ type Compressor struct {
 	contextTree   *context_tree.ContextTree
 	maxOrder      int
 	slidingWindow *sliding_window.SlidingWindow
+	contextBuf    []byte // переиспользуемый буфер для контекста
 }
 
 // NewCompressor принимает writer (для заголовка) и энкодер (который пишет в тот же writer)
@@ -34,6 +35,7 @@ func NewCompressor(w io.Writer, encoder EncoderWriter, maxOrder int, originalSiz
 		contextTree:   context_tree.NewContextTree(maxOrder),
 		maxOrder:      maxOrder,
 		slidingWindow: sliding_window.NewSlidingWindow(maxOrder),
+		contextBuf:    make([]byte, maxOrder), // буфер для контекста
 	}, nil
 }
 
@@ -41,15 +43,17 @@ func NewCompressor(w io.Writer, encoder EncoderWriter, maxOrder int, originalSiz
 func (c *Compressor) Write(p []byte) (n int, err error) {
 	for _, sym := range p {
 		order := c.maxOrder
-		context := c.slidingWindow.GetContext(order)
+		// получаем контекст максимального порядка, используя переиспользуемый буфер
+		context := c.slidingWindow.GetContext(order, c.contextBuf[:0])
 
 		for order >= 0 {
 			node := c.contextTree.GetNode(context)
 			if node != nil && node.Freq[sym] > 0 {
 				// Символ найден – кодируем его, используя распределение с escape
 				escapeFreq := uint64(len(node.Freq)) // метод C
-				cumFreq, totalFreq := buildCumFreqWithEscape(node.Freq, escapeFreq)
-				c.encoder.Encode(int(sym), cumFreq, totalFreq) // totalFreq = node.Total + escapeFreq
+				cum, total := GetCumFreqWithEscape(node.Freq, escapeFreq)
+				c.encoder.Encode(int(sym), cum, total)
+				PutCumFreq(cum)
 				break
 			} else {
 				// Символ не найден – кодируем escape и переходим к меньшему порядку
@@ -57,20 +61,20 @@ func (c *Compressor) Write(p []byte) (n int, err error) {
 				if node != nil {
 					escapeFreq = uint64(len(node.Freq)) // метод C
 				}
-				var cumFreq []uint64
-				var totalFreq uint64
 				if node != nil {
-					cumFreq, totalFreq = buildCumFreqWithEscape(node.Freq, escapeFreq)
+					cum, total := GetCumFreqWithEscape(node.Freq, escapeFreq)
+					c.encoder.Encode(Escape, cum, total)
+					PutCumFreq(cum)
 				} else {
-					cumFreq = make([]uint64, 258)
-					cumFreq[257] = escapeFreq
-					totalFreq = escapeFreq
+					// узел не существует – только escape с частотой 1
+					cum := make([]uint64, 258)
+					cum[257] = escapeFreq
+					c.encoder.Encode(Escape, cum, escapeFreq)
 				}
-				c.encoder.Encode(Escape, cumFreq, totalFreq)
 
 				order--
 				if order >= 0 {
-					context = c.slidingWindow.GetContext(order)
+					context = c.slidingWindow.GetContext(order, c.contextBuf[:0])
 				}
 				continue
 			}
@@ -78,15 +82,12 @@ func (c *Compressor) Write(p []byte) (n int, err error) {
 
 		if order < 0 {
 			// Порядок -1: равномерное распределение по 256 символам
-			uniformCumFreq := make([]uint64, 257)
-			for i := 0; i < 256; i++ {
-				uniformCumFreq[i+1] = uint64(i + 1)
-			}
-			c.encoder.Encode(int(sym), uniformCumFreq, 256)
+			uniformCum, uniformTotal := GetUniformCumFreq()
+			c.encoder.Encode(int(sym), uniformCum, uniformTotal)
 		}
 
 		// Обновляем статистику для всех суффиксов контекста максимальной длины
-		fullContext := c.slidingWindow.GetContext(c.maxOrder)
+		fullContext := c.slidingWindow.GetContext(c.maxOrder, c.contextBuf[:0])
 		c.contextTree.Update(sym, fullContext)
 		c.slidingWindow.Push(sym)
 	}
@@ -95,10 +96,5 @@ func (c *Compressor) Write(p []byte) (n int, err error) {
 
 // Close завершает сжатие – вызывает Flush у арифметического кодера
 func (c *Compressor) Close() error {
-	err := c.encoder.Flush()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return c.encoder.Flush()
 }
