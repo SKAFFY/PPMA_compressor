@@ -46,9 +46,10 @@ func (c *Compressor) Write(p []byte) (n int, err error) {
 		for order >= 0 {
 			node := c.contextTree.GetNode(context)
 			if node != nil && node.Freq[sym] > 0 {
-				// Символ найден в текущем контексте – кодируем его
-				cumFreq := buildCumFreq(node.Freq)
-				c.encoder.Encode(int(sym), cumFreq, uint64(node.Total))
+				// Символ найден – кодируем его, используя распределение с escape
+				escapeFreq := uint64(len(node.Freq)) // метод C
+				cumFreq, totalFreq := buildCumFreqWithEscape(node.Freq, escapeFreq)
+				c.encoder.Encode(int(sym), cumFreq, totalFreq) // totalFreq = node.Total + escapeFreq
 				break
 			} else {
 				// Символ не найден – кодируем escape и переходим к меньшему порядку
@@ -59,11 +60,9 @@ func (c *Compressor) Write(p []byte) (n int, err error) {
 				var cumFreq []uint64
 				var totalFreq uint64
 				if node != nil {
-					cumFreq = buildCumFreqWithEscape(node.Freq, escapeFreq)
-					totalFreq = uint64(node.Total) + escapeFreq
+					cumFreq, totalFreq = buildCumFreqWithEscape(node.Freq, escapeFreq)
 				} else {
-					// Контекст вообще не существует – только escape (нужен массив длиной 258)
-					cumFreq = make([]uint64, 258) // индексы 0..257
+					cumFreq = make([]uint64, 258)
 					cumFreq[257] = escapeFreq
 					totalFreq = escapeFreq
 				}
@@ -101,5 +100,5 @@ func (c *Compressor) Close() error {
 		return err
 	}
 
-	return c.encoder.Flush()
+	return nil
 }

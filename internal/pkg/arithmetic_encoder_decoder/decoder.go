@@ -80,6 +80,10 @@ func (d *ArithmeticDecoder) Decode(cumFreq []uint64, totalFreq uint64) (int, err
 				d.high = (d.high << 1) | 1
 				bit := d.readBit()
 				d.value = (d.value << 1) | bit
+				mask := TopValue - 1
+				d.low &= mask
+				d.high &= mask
+				d.value &= mask
 			}
 			return sym, nil
 		} else if scaled < cumFreq[mid] {

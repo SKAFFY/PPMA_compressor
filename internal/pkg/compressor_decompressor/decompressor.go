@@ -5,6 +5,7 @@ import (
 	"PPMA_compressor/internal/pkg/context_tree"
 	"PPMA_compressor/internal/pkg/sliding_window"
 	"encoding/binary"
+	"fmt"
 	"io"
 )
 
@@ -72,12 +73,8 @@ func (d *Decompressor) decodeNextSymbol() (int, error) {
 	for order >= 0 {
 		node := d.contextTree.GetNode(context)
 		if node != nil && node.Total > 0 {
-			escapeFreq := uint64(1)
-			if node != nil {
-				escapeFreq = uint64(len(node.Freq)) // метод C: количество различных символов
-			}
-			cumFreq := buildCumFreqWithEscape(node.Freq, escapeFreq)
-			totalFreq := uint64(node.Total) + escapeFreq
+			escapeFreq := uint64(len(node.Freq))
+			cumFreq, totalFreq := buildCumFreqWithEscape(node.Freq, escapeFreq)
 			sym, err := d.decoder.Decode(cumFreq, totalFreq)
 			if err != nil {
 				return 0, err
@@ -85,9 +82,9 @@ func (d *Decompressor) decodeNextSymbol() (int, error) {
 			if sym != Escape {
 				return sym, nil
 			}
-			// escape — переходим к меньшему порядку
+			// Escape – переходим к меньшему порядку
 		} else {
-			// узел не существует — кодировался только escape (частота 1)
+			// Узел не существует или пуст – кодировался только Escape
 			cumFreq := make([]uint64, 258)
 			cumFreq[257] = 1
 			sym, err := d.decoder.Decode(cumFreq, 1)
@@ -95,15 +92,16 @@ func (d *Decompressor) decodeNextSymbol() (int, error) {
 				return 0, err
 			}
 			if sym != Escape {
-				// такого не должно быть, но игнорируем
+				return 0, fmt.Errorf("expected Escape, got %d", sym)
 			}
+			// Escape – переходим к меньшему порядку
 		}
 		order--
 		if order >= 0 {
 			context = d.slidingWindow.GetContext(order)
 		}
 	}
-	// Порядок -1: равномерное распределение (256 символов)
+	// order == -1: равномерное распределение
 	uniformCumFreq := make([]uint64, 257)
 	for i := 0; i < 256; i++ {
 		uniformCumFreq[i+1] = uint64(i + 1)

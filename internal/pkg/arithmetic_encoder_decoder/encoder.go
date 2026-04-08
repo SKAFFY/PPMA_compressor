@@ -69,6 +69,9 @@ func (e *ArithmeticEncoder) Encode(sym int, cumFreq []uint64, totalFreq uint64) 
 		}
 		e.low <<= 1
 		e.high = (e.high << 1) | 1
+		mask := TopValue - 1
+		e.low &= mask
+		e.high &= mask
 	}
 }
 

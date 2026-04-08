@@ -6,9 +6,10 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"github.com/schollz/progressbar/v3"
 	"io"
 	"os"
+
+	"github.com/schollz/progressbar/v3"
 )
 
 func main() {
@@ -69,11 +70,6 @@ func main() {
 		fmt.Printf("Error creating compressor: %v\n", err)
 		return
 	}
-	defer func() {
-		if err := compressor.Close(); err != nil {
-			fmt.Printf("Error closing compressor: %v\n", err)
-		}
-	}()
 
 	var reader io.Reader = sourceFile
 	if *showProgress && sourceSize > 0 {
@@ -84,6 +80,10 @@ func main() {
 	_, err = io.Copy(compressor, reader)
 	if err != nil {
 		fmt.Printf("Error compressing: %v\n", err)
+		return
+	}
+	if err := compressor.Close(); err != nil {
+		fmt.Printf("Error closing compressor: %v\n", err)
 		return
 	}
 
